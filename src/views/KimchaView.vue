@@ -283,6 +283,7 @@
               width="100%" 
               :style="{ height: iframeHeight + 'px' }"
               frameborder="0"
+              scrolling="no"
             ></iframe>
             <div v-else class="text-center py-8">
               <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -368,6 +369,18 @@ export default {
       console.log('מפנה לדף תשלום חיצוני:', url);
       window.open(url, '_blank');
     };
+    
+    // אתחול האייפרם בדף
+    if (this.$refs.nedarimIframe) {
+      this.$refs.nedarimIframe.onload = () => {
+        console.log('האייפרם נטען, מבקש גובה');
+        if (this.$refs.nedarimIframe && this.$refs.nedarimIframe.contentWindow) {
+          this.$refs.nedarimIframe.contentWindow.postMessage({
+            Name: 'GetHeight'
+          }, 'https://www.matara.pro');
+        }
+      };
+    }
   },
   methods: {
     validatePhone() {
@@ -423,12 +436,10 @@ export default {
         Mail: this.donationData.email || '',
         PaymentType: this.donationData.paymentType,   // Ragil או HK
         Amount: this.donationData.amount.toString(),
-        Tashlumim: this.donationData.payments,        // רלוונטי רק לתשלום רגיל
+        Tashlumim: this.donationData.paymentType === 'HK' && this.donationData.hkPeriod === 0 ? '' : this.donationData.payments,  // אם הוראת קבע ללא הגבלה, להשאיר ריק
         Currency: this.nedarimConfiguration.Currency, // 1 = שקל, 2 = דולר
         Groupe: 'קמחא דפסחא',                         // קטגוריה
         Comment: this.donationData.dedication || '',
-        HK_Months: this.donationData.paymentType === 'HK' ? 
-                 (this.donationData.hkPeriod > 0 ? this.donationData.hkPeriod.toString() : '0') : '', // משך הוראת הקבע בחודשים (0 = ללא הגבלה)
         Param1: this.donationData.paymentType === 'HK' ? 
                 (this.donationData.hkPeriod > 0 ? this.formatHkPeriod(this.donationData.hkPeriod) : 'ללא הגבלה') : '',
         Param2: '',                                   // טקסט חופשי
@@ -440,8 +451,8 @@ export default {
       
       // שליחת הנתונים לאייפרם באמצעות PostNedarim
       iframeWindow.postMessage(JSON.stringify({
-        action: 'PostNedarim',
-        params: donation
+        Name: 'FinishTransaction2',
+        Value: donation
       }), 'https://www.matara.pro');
     },
     
@@ -461,41 +472,46 @@ export default {
         }
         
         // התאמת גובה האייפרם
-        if (data.action === 'height') {
-          this.iframeHeight = data.height;
+        if (data.Name === 'Height') {
+          console.log('עדכון גובה האייפרם:', data.Value);
+          this.iframeHeight = parseInt(data.Value) + 15;
         }
         
         // הפניה לדף תשלום חיצוני (למשל PayPal)
-        if (data.action === 'RedirectTo') {
-          if (window.redirectToPayment && data.url) {
-            window.redirectToPayment(data.url);
+        if (data.action === 'RedirectTo' || data.Name === 'RedirectTo') {
+          const url = data.url || data.Value;
+          if (window.redirectToPayment && url) {
+            window.redirectToPayment(url);
           }
         }
         
         // עדכון סטטוס תשלום
-        if (data.action === 'PaymentUpdate') {
+        if (data.action === 'PaymentUpdate' || data.Name === 'PaymentUpdate') {
           console.log('עדכון סטטוס תשלום:', data);
           // אפשר להוסיף כאן לוגיקה לעדכון ממשק המשתמש
         }
         
         // קבלת תשובה מהאייפרם לאחר סיום העסקה
-        if (data.action === 'TransactionResponse') {
-          this.handleTransactionResponse(data.Response);
+        if (data.action === 'TransactionResponse' || data.Name === 'TransactionResponse') {
+          const response = data.Response || data.Value;
+          this.handleTransactionResponse(response);
         }
         
         // הודעת שגיאה מהאייפרם
-        if (data.action === 'Error') {
-          console.error('שגיאה מנדרים פלוס:', data.ErrorMessage);
-          alert('אירעה שגיאה: ' + data.ErrorMessage);
+        if (data.action === 'Error' || data.Name === 'Error') {
+          const errorMsg = data.ErrorMessage || data.Value;
+          console.error('שגיאה מנדרים פלוס:', errorMsg);
+          alert('אירעה שגיאה: ' + errorMsg);
         }
         
         // הודעת שגיאה בוולידציה
-        if (data.action === 'ValidationError') {
-          console.error('שגיאת וולידציה:', data.Errors);
+        if (data.action === 'ValidationError' || data.Name === 'ValidationError') {
+          const errors = data.Errors || data.Value;
+          console.error('שגיאת וולידציה:', errors);
           let errorMsg = 'נא לתקן את השגיאות הבאות:\n';
           
-          if (Array.isArray(data.Errors)) {
-            data.Errors.forEach(err => {
+          if (Array.isArray(errors)) {
+            errors.forEach(err => {
               errorMsg += `- ${err.FieldName}: ${err.ErrorMessage}\n`;
             });
           }
