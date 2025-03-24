@@ -225,19 +225,6 @@
           </div>
 
           <div v-else class="iframe-container">
-            <!-- כפתור חזרה -->
-            <div class="flex justify-end mb-4">
-              <button 
-                @click="showIframe = false" 
-                class="flex items-center text-primary-600 hover:text-primary-700 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
-                </svg>
-                חזרה לעריכת פרטים
-              </button>
-            </div>
-
             <!-- תצוגת סיכום לפני התשלום -->
             <div class="bg-primary-50 p-6 rounded-lg mb-6">
               <h3 class="text-2xl font-bold text-primary-800 mb-4 text-center">סיכום התרומה</h3>
@@ -275,19 +262,53 @@
               </div>
             </div>
             
+            <!-- האייפריים להכנסת פרטי אשראי -->
             <iframe 
               v-if="iframeLoaded" 
               ref="nedarimIframe" 
               id="nedarimIframe"
               src="https://www.matara.pro/nedarimplus/iframe/"
               width="100%" 
-              :style="{ height: iframeHeight + 'px' }"
+              style="height: 350px;"
               frameborder="0"
               scrolling="no"
             ></iframe>
-            <div v-else class="text-center py-8">
+            
+            <!-- כפתור התשלום -->
+            <div v-if="iframeLoaded && !isProcessingPayment" class="text-center mt-2 mb-8">
+              <button 
+                type="button" 
+                @click="executePayment"
+                class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-12 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg text-xl"
+                :disabled="isProcessingPayment"
+              >
+                ביצוע תשלום
+              </button>
+            </div>
+            
+            <!-- טוען או שגיאות -->
+            <div v-if="!iframeLoaded" class="text-center py-8">
               <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
               <p class="mt-4 text-gray-600">טוען את עמוד התשלום...</p>
+            </div>
+            
+            <!-- אנימציית המתנה בזמן סליקה -->
+            <div v-if="isProcessingPayment" class="text-center py-4">
+              <div class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+              <p class="mt-2 text-gray-600 text-lg">מבצע חיוב, נא להמתין...</p>
+            </div>
+            
+            <!-- הודעת שגיאה מהעסקה -->
+            <div v-if="paymentError" class="bg-red-50 p-4 rounded-lg mt-4 text-red-700 text-center font-bold">
+              {{ paymentError }}
+            </div>
+            
+            <!-- הודעת הצלחה -->
+            <div v-if="paymentSuccess" class="bg-green-50 p-6 rounded-lg mt-6 text-center">
+              <div class="text-5xl mb-4 text-green-500">✅</div>
+              <h3 class="text-2xl font-bold text-green-700 mb-2">התשלום התקבל בהצלחה!</h3>
+              <p class="text-gray-600 mb-4">תודה על תרומתך לקמחא דפסחא.</p>
+              <p class="text-gray-600">מעבר לדף האישור...</p>
             </div>
           </div>
         </div>
@@ -351,7 +372,10 @@ export default {
       animatingAmount: false,
       phoneError: false,
       targetAmount: 0,
-      currentDisplayAmount: 0
+      currentDisplayAmount: 0,
+      paymentError: null,
+      isProcessingPayment: false,
+      paymentSuccess: false
     }
   },
   computed: {
@@ -410,13 +434,23 @@ export default {
       }
       
       this.showIframe = true
+      this.paymentError = null
+      this.isProcessingPayment = false
+      this.paymentSuccess = false
       
+      // טעינת האייפריים
       setTimeout(() => {
         this.iframeLoaded = true
-        setTimeout(() => {
-          this.postDataToIframe()
-        }, 1000)
       }, 1000)
+    },
+    executePayment() {
+      // ביצוע התשלום כאשר לוחצים על כפתור התשלום
+      this.paymentError = null
+      this.isProcessingPayment = true
+      
+      setTimeout(() => {
+        this.postDataToIframe()
+      }, 500)
     },
     postDataToIframe() {
       if (!this.$refs.nedarimIframe) return
@@ -526,26 +560,31 @@ export default {
     
     handleTransactionResponse(response) {
       console.log('תשובה מהאייפרם:', response);
+      this.isProcessingPayment = false
       
       // בדיקת סטטוס העסקה
       if (response && response.Status === 'True') {
         // עסקה הצליחה
-        this.$router.push({
-          path: '/donation-success',
-          query: {
-            transactionId: response.TransactionId,
-            amount: this.donationData.amount,
-            type: this.donationData.paymentType,
-            period: this.donationData.paymentType === 'HK' ? 
-                    (this.donationData.hkPeriod === 0 ? 'ללא הגבלה' : this.formatHkPeriod(this.donationData.hkPeriod)) : '',
-            payments: this.donationData.payments
-          }
-        });
+        this.paymentSuccess = true
+        
+        // מעבר לדף אישור לאחר השהייה קצרה
+        setTimeout(() => {
+          this.$router.push({
+            path: '/donation-success',
+            query: {
+              transactionId: response.TransactionId,
+              amount: this.donationData.amount,
+              type: this.donationData.paymentType,
+              period: this.donationData.paymentType === 'HK' ? 
+                      (this.donationData.hkPeriod === 0 ? 'ללא הגבלה' : this.formatHkPeriod(this.donationData.hkPeriod)) : '',
+              payments: this.donationData.payments
+            }
+          });
+        }, 2000)
       } else {
         // עסקה נכשלה
         const errorMsg = response ? (response.ErrorMessage || 'אירעה שגיאה בתהליך התשלום') : 'התשלום נכשל ללא פרטי שגיאה';
-        alert('התשלום נכשל: ' + errorMsg);
-        this.showIframe = false;
+        this.paymentError = 'התשלום נכשל: ' + errorMsg;
       }
     },
     setAmount(amount) {
