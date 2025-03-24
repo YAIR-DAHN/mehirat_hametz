@@ -11,7 +11,7 @@ export default function Home() {
             מכירת חמץ אונליין
           </h1>
           <p className="text-xl md:text-2xl text-gray-700 mb-8 max-w-3xl mx-auto">
-            מכירת חמץ מקוונת, פשוטה ומהירה לפני חג הפסח, בהתאם להלכה.
+            מכירת חמץ מקוונת, פשוטה ומהירה לפני חג הפסח, למהדרין.
           </p>
           <div className="flex flex-col md:flex-row justify-center gap-4">
             <Link href="/form" className="btn-primary text-xl py-3 px-8">

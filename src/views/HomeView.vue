@@ -27,7 +27,7 @@
           <!-- כפתורי שיתוף -->
           <div class="mt-8">
             <ShareButtons 
-              title="עזרו לנו להפיץ את המצווה" 
+              title="שתפו חברים שעדיין לא עשו מכירת חמץ" 
               text="מכירת חמץ מקוונת של כולל שערי ניסים - הזדרזו למלא את הטופס לפני פסח!"
               size="large"
             />
@@ -70,7 +70,7 @@
         <!-- אזהרה -->
         <div class="bg-yellow-50 border-r-4 border-yellow-400 p-6 mb-8 rounded-lg shadow-md transform hover:shadow-lg transition-all duration-300">
           <p class="text-yellow-700 text-lg">
-            <strong class="text-yellow-800">חשוב לדעת:</strong> יש למלא את הטופס לא יאוחר מיום י"ג בניסן תשפ"ה, לפני זמן איסור חמץ.
+            <strong class="text-yellow-800">חשוב לדעת:</strong> יש למלא את הטופס לא יאוחר מיום חמישי יא' ניסן תשפ"ה.
           </p>
         </div>
 
@@ -80,7 +80,7 @@
             אל תחכו לרגע האחרון
           </h2>
           <p class="text-xl text-gray-600 mb-6">
-            מלאו את הטופס עכשיו והבטיחו את מכירת החמץ שלכם בהתאם להלכה
+            מלאו את הטופס עכשיו והבטיחו את מכירת החמץ שלכם לפני חג הפסח
           </p>
           <div class="mb-6">
             <router-link to="/form" class="btn-primary text-xl py-3 px-8 inline-block transform hover:scale-105 transition-transform duration-300">
@@ -124,7 +124,7 @@
                 <div>
                   <h3 class="text-xl font-bold text-primary-700 mb-2">מועד אחרון למכירה</h3>
                   <p class="text-gray-600 leading-relaxed">
-                    יש למלא את הטופס לא יאוחר מיום י"ג בניסן תשפ"ה
+                    יש למלא את הטופס לא יאוחר מיום חמישי יא' ניסן תשפ"ה
                   </p>
                 </div>
 

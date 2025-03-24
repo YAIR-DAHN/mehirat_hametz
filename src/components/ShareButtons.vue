@@ -68,9 +68,7 @@ export default {
     },
     url: {
       type: String,
-      default: function() {
-        return window.location.href;
-      }
+      default: 'https://mehirat-hametz.vercel.app/'
     },
     size: {
       type: String,

@@ -14,13 +14,13 @@
           </p>
           
           <!-- כפתורי שיתוף -->
-          <div class="py-4">
+          <!-- <div class="py-4">
             <ShareButtons 
               title="עזרו לנו להפיץ את המצווה" 
               text="סייעו למשפחות נזקקות בחג הפסח - קמחא דפסחא של כולל שערי ניסים"
               size="large"
             />
-          </div>
+          </div> -->
         </div>
 
        
@@ -59,6 +59,7 @@
         </div>
         <div class="card mb-8" >
           <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center" >תרמו עכשיו לקמחא דפסחא</h2>
+          <p class="text-gray-600 mb-6 text-center">התרומות מוכרות לצורכי מס לפי סעיף 46</p>
           
           <div v-if="!showIframe" class="max-w-lg mx-auto">
             <form @submit.prevent="startDonation" class="space-y-6">
@@ -72,7 +73,16 @@
               </div>
               <div>
                 <label class="form-label">טלפון <span class="text-red-500">*</span></label>
-                <input type="tel" v-model="donationData.phone" class="form-input" required>
+                <input 
+                  type="tel" 
+                  v-model="donationData.phone" 
+                  class="form-input" 
+                  required
+                  pattern="^0[0-9]{8,9}$"
+                  @input="validatePhone"
+                  :class="{'border-red-500': phoneError}"
+                >
+                <span v-if="phoneError" class="text-red-500 text-sm">מספר טלפון לא תקין</span>
               </div>
               <div>
                 <label class="form-label">דוא"ל</label>
@@ -88,20 +98,30 @@
               </div>
               <div>
                 <label class="form-label">סכום תרומה <span class="text-red-500">*</span></label>
+                <!-- תצוגת הסכום הנבחר -->
+                <div class="text-center mb-6 overflow-hidden">
+                  <div class="text-5xl font-bold text-primary-700 mb-2">
+                    ₪{{ formattedAmount }}
+                  </div>
+                  <div class="text-gray-500" v-if="donationData.payments > 1 && donationData.paymentType === 'Ragil'">
+                    {{ donationData.payments }} תשלומים של ₪{{ (donationData.amount / donationData.payments).toFixed(0) }}
+                  </div>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                   <button 
                     type="button"
-                    class="py-3 px-4 border rounded-lg text-lg" 
-                    :class="donationData.amount === 600 ? 'bg-primary-100 border-primary-500 font-bold' : 'border-gray-300 hover:border-primary-400'"
-                    @click="donationData.amount = 600"
+                    class="py-3 px-4 border rounded-lg text-lg transition-all duration-300 transform hover:scale-105" 
+                    :class="donationData.amount === 600 ? 'bg-primary-100 border-primary-500 font-bold shadow-lg scale-105' : 'border-gray-300 hover:border-primary-400'"
+                    @click="setAmount(600)"
                   >
                     סל מלא - ₪600
                   </button>
                   <button 
                     type="button"
-                    class="py-3 px-4 border rounded-lg text-lg" 
-                    :class="donationData.amount === 300 ? 'bg-primary-100 border-primary-500 font-bold' : 'border-gray-300 hover:border-primary-400'"
-                    @click="donationData.amount = 300"
+                    class="py-3 px-4 border rounded-lg text-lg transition-all duration-300 transform hover:scale-105" 
+                    :class="donationData.amount === 300 ? 'bg-primary-100 border-primary-500 font-bold shadow-lg scale-105' : 'border-gray-300 hover:border-primary-400'"
+                    @click="setAmount(300)"
                   >
                     חצי סל - ₪300
                   </button>
@@ -113,8 +133,8 @@
                     :key="amount"
                     type="button"
                     class="py-2 px-3 border rounded-lg transition-all duration-300 transform hover:scale-105" 
-                    :class="donationData.amount === amount ? 'bg-primary-100 border-primary-500 shadow-md scale-105' : 'border-gray-300 hover:border-primary-400'"
-                    @click="donationData.amount = amount"
+                    :class="donationData.amount === amount ? 'bg-primary-100 border-primary-500 shadow-lg scale-105' : 'border-gray-300 hover:border-primary-400'"
+                    @click="setAmount(amount)"
                   >
                     ₪{{ amount }}
                   </button>
@@ -130,14 +150,60 @@
                   >
                 </div>
               </div>
+
+              <!-- סוג תשלום -->
+              <div class="mb-6">
+                <label class="form-label">סוג תשלום</label>
+                <div class="grid grid-cols-2 gap-3">
+                  <button 
+                    type="button"
+                    class="w-full py-3 px-4 border rounded-lg text-lg transition-all duration-300" 
+                    :class="donationData.paymentType === 'Ragil' ? 'bg-primary-100 border-primary-500 font-bold shadow-lg' : 'border-gray-300 hover:border-primary-400'"
+                    @click="setPaymentType('Ragil')"
+                  >
+                    תשלום חד פעמי
+                  </button>
+                  <div>
+                    <button 
+                      type="button"
+                      class="w-full py-3 px-4 border rounded-lg text-lg transition-all duration-300" 
+                      :class="donationData.paymentType === 'HK' ? 'bg-primary-100 border-primary-500 font-bold shadow-lg' : 'border-gray-300 hover:border-primary-400'"
+                      @click="setPaymentType('HK')"
+                    >
+                      הוראת קבע חודשית
+                    </button>
+                    <div v-if="donationData.paymentType === 'HK'" class="text-sm text-gray-500 mt-1 mr-2">
+                      חיוב חודשי קבוע בכרטיס האשראי
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div>
-                <label class="form-label">מספר תשלומים</label>
-                <select v-model="donationData.payments" class="form-input">
+                <label class="form-label">{{ donationData.paymentType === 'Ragil' ? 'מספר תשלומים' : 'משך הוראת הקבע' }}</label>
+                <select 
+                  v-if="donationData.paymentType === 'Ragil'"
+                  v-model="donationData.payments" 
+                  class="form-input"
+                >
                   <option value="1">תשלום אחד</option>
                   <option value="2">2 תשלומים</option>
                   <option value="3">3 תשלומים</option>
                   <option value="6">6 תשלומים</option>
                   <option value="12">12 תשלומים</option>
+                </select>
+                <select 
+                  v-else
+                  v-model="donationData.hkPeriod" 
+                  class="form-input"
+                >
+                  <option :value="0">ללא הגבלה</option>
+                  <option :value="3">3 חודשים</option>
+                  <option :value="6">6 חודשים</option>
+                  <option :value="12">שנה</option>
+                  <option :value="24">שנתיים</option>
+                  <option :value="36">3 שנים</option>
+                  <option :value="60">5 שנים</option>
                 </select>
               </div>
               <div>
@@ -159,6 +225,56 @@
           </div>
 
           <div v-else class="iframe-container">
+            <!-- כפתור חזרה -->
+            <div class="flex justify-end mb-4">
+              <button 
+                @click="showIframe = false" 
+                class="flex items-center text-primary-600 hover:text-primary-700 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                </svg>
+                חזרה לעריכת פרטים
+              </button>
+            </div>
+
+            <!-- תצוגת סיכום לפני התשלום -->
+            <div class="bg-primary-50 p-6 rounded-lg mb-6">
+              <h3 class="text-2xl font-bold text-primary-800 mb-4 text-center">סיכום התרומה</h3>
+              <div class="space-y-3 text-lg">
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600">סכום התרומה:</span>
+                  <span class="font-bold text-primary-700">₪{{ formattedAmount }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-600">סוג תשלום:</span>
+                  <span class="font-bold text-primary-700">{{ donationData.paymentType === 'Ragil' ? 'תשלום חד פעמי' : 'הוראת קבע חודשית' }}</span>
+                </div>
+                <div class="flex justify-between items-center" v-if="donationData.paymentType === 'Ragil' && donationData.payments > 1">
+                  <span class="text-gray-600">מספר תשלומים:</span>
+                  <span class="font-bold text-primary-700">{{ donationData.payments }}</span>
+                </div>
+                <div class="flex justify-between items-center" v-if="donationData.paymentType === 'Ragil' && donationData.payments > 1">
+                  <span class="text-gray-600">סכום לתשלום:</span>
+                  <span class="font-bold text-primary-700">₪{{ (donationData.amount / donationData.payments).toFixed(0) }} × {{ donationData.payments }}</span>
+                </div>
+                <div class="flex justify-between items-center" v-if="donationData.paymentType === 'HK'">
+                  <span class="text-gray-600">משך הוראת הקבע:</span>
+                  <span class="font-bold text-primary-700">{{ donationData.hkPeriod === 0 ? 'ללא הגבלה' : formatHkPeriod(donationData.hkPeriod) }}</span>
+                </div>
+                <div class="flex justify-between items-center" v-if="donationData.dedication">
+                  <span class="text-gray-600">הקדשה:</span>
+                  <span class="font-bold text-primary-700">{{ donationData.dedication }}</span>
+                </div>
+                <div class="border-t border-primary-200 mt-4 pt-4">
+                  <div class="flex justify-between items-center text-xl">
+                    <span class="font-bold text-primary-800">{{ donationData.paymentType === 'HK' ? 'סכום חודשי:' : 'סה"כ לתשלום:' }}</span>
+                    <span class="font-bold text-primary-800">₪{{ formattedAmount }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             <iframe 
               v-if="iframeLoaded" 
               ref="nedarimIframe" 
@@ -218,7 +334,9 @@ export default {
         street: '',
         amount: 180,
         payments: '1',
-        dedication: ''
+        dedication: '',
+        paymentType: 'Ragil', // Ragil = חד פעמי, HK = הוראת קבע
+        hkPeriod: 0 // 0 = ללא הגבלה, אחרת מספר חודשים
       },
       showIframe: false,
       iframeLoaded: false,
@@ -228,7 +346,17 @@ export default {
         ApiValid: 'xxxxxxx',      // טקסט אימות - צריך לקבל מהמשרד
         Currency: '1',            // 1 = שקל, 2 = דולר
         PaymentType: 'Ragil',     // סוג תשלום: Ragil = עסקה רגילה
-      }
+      },
+      animatingAmount: false,
+      phoneError: false,
+      targetAmount: 0,
+      currentDisplayAmount: 0
+    }
+  },
+  computed: {
+    formattedAmount() {
+      const amount = this.animatingAmount ? Math.floor(this.currentDisplayAmount) : this.donationData.amount;
+      return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
     }
   },
   mounted() {
@@ -236,26 +364,46 @@ export default {
     window.addEventListener('message', this.handlePostMessage);
   },
   methods: {
-    startDonation() {
-      this.showIframe = true;
-      
-      // נחכה לטעינת האייפרם
-      setTimeout(() => {
-        this.iframeLoaded = true;
-        
-        // נמתין לטעינת האייפרם לפני שנשלח את הנתונים
-        setTimeout(() => {
-          this.postDataToIframe();
-        }, 1000);
-      }, 1000);
+    validatePhone() {
+      const phoneRegex = /^0[0-9]{8,9}$/
+      this.phoneError = !phoneRegex.test(this.donationData.phone)
     },
-    
+    setPaymentType(type) {
+      this.donationData.paymentType = type
+      this.nedarimConfiguration.PaymentType = type
+      // אם זו הוראת קבע, נאפס את מספר התשלומים ל-1
+      if (type === 'HK') {
+        this.donationData.payments = '1'
+        if (this.donationData.hkPeriod === 0) {
+          this.donationData.hkPeriod = 0 // ללא הגבלה
+        }
+      }
+    },
+    setHkPeriod(period) {
+      this.donationData.hkPeriod = period
+    },
+    startDonation() {
+      // בדיקת תקינות מספר טלפון לפני שליחה
+      this.validatePhone()
+      if (this.phoneError) {
+        alert('אנא הזן מספר טלפון תקין')
+        return
+      }
+      
+      this.showIframe = true
+      
+      setTimeout(() => {
+        this.iframeLoaded = true
+        setTimeout(() => {
+          this.postDataToIframe()
+        }, 1000)
+      }, 1000)
+    },
     postDataToIframe() {
-      if (!this.$refs.nedarimIframe) return;
+      if (!this.$refs.nedarimIframe) return
       
-      const iframeWindow = this.$refs.nedarimIframe.contentWindow;
+      const iframeWindow = this.$refs.nedarimIframe.contentWindow
       
-      // הכנת הנתונים לשליחה לאייפרם
       const donation = {
         Mosad: this.nedarimConfiguration.Mosad,
         ApiValid: this.nedarimConfiguration.ApiValid,
@@ -266,13 +414,14 @@ export default {
         City: this.donationData.city || '',
         Phone: this.donationData.phone,
         Mail: this.donationData.email || '',
-        PaymentType: this.nedarimConfiguration.PaymentType,
+        PaymentType: this.donationData.paymentType,
         Amount: this.donationData.amount.toString(),
         Tashlumim: this.donationData.payments,
         Currency: this.nedarimConfiguration.Currency,
         Groupe: 'קמחא דפסחא',                         // קטגוריה
         Comment: this.donationData.dedication || '',
-        Param1: '',                                   // טקסט חופשי
+        Param1: this.donationData.paymentType === 'HK' ? 
+                (this.donationData.hkPeriod > 0 ? this.donationData.hkPeriod.toString() : 'ללא הגבלה') : '',
         Param2: '',                                   // טקסט חופשי
         CallBack: window.location.origin + '/api/donation-callback',  // כתובת לקבלת עדכון לשרת
         CallBackMailError: ''                         // מייל לשליחת התראות שגיאה
@@ -324,6 +473,48 @@ export default {
         alert('התשלום נכשל: ' + response.ErrorMessage);
         this.showIframe = false;
       }
+    },
+    setAmount(amount) {
+      if (this.animatingAmount) return;
+      
+      this.animatingAmount = true;
+      this.targetAmount = amount;
+      this.currentDisplayAmount = this.donationData.amount;
+      
+      // מספר הצעדים והמשך זמן
+      const duration = 1000; // משך האנימציה במילישניות
+      const fps = 60;
+      const steps = duration / (1000 / fps);
+      
+      let step = 0;
+      const startValue = this.donationData.amount;
+      const changeInValue = this.targetAmount - startValue;
+      
+      const animateAmount = () => {
+        step++;
+        
+        // נוסחת easeOutQuad לאנימציה חלקה
+        const progress = 1 - Math.pow(1 - step / steps, 2);
+        this.currentDisplayAmount = startValue + changeInValue * progress;
+        
+        if (step < steps) {
+          requestAnimationFrame(animateAmount);
+        } else {
+          // סיום האנימציה
+          this.donationData.amount = this.targetAmount;
+          this.currentDisplayAmount = this.targetAmount;
+          this.animatingAmount = false;
+        }
+      };
+      
+      requestAnimationFrame(animateAmount);
+    },
+    formatHkPeriod(months) {
+      if (months === 12) return 'שנה';
+      if (months === 24) return 'שנתיים';
+      if (months === 36) return '3 שנים';
+      if (months === 60) return '5 שנים';
+      return months + ' חודשים';
     }
   },
   beforeUnmount() {
@@ -412,5 +603,41 @@ input:focus, select:focus, textarea:focus {
   border: 2px solid #ffffff;
   border-top-color: transparent;
   animation: loading 0.8s linear infinite;
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+/* הוספת אנימציות לכפתורים */
+.btn-primary, button {
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover, button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.btn-primary:active, button:active {
+  transform: translateY(1px);
+}
+
+/* שיפור עיצוב הטופס */
+.form-input:focus {
+  transform: scale(1.02);
+}
+
+.iframe-container {
+  transition: all 0.5s ease;
+}
+
+/* הסתרת אנימציית המספרים */
+.text-5xl {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 </style> 
