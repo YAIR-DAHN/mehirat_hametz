@@ -269,9 +269,9 @@
               id="nedarimIframe"
               src="https://www.matara.pro/nedarimplus/iframe/"
               width="100%" 
-              style="height: 350px;"
+              :style="{ height: iframeHeight + 'px' }"
               frameborder="0"
-              scrolling="no"
+              allow="payment"
             ></iframe>
             
             <!-- כפתור התשלום -->
@@ -299,8 +299,13 @@
             </div>
             
             <!-- הודעת שגיאה מהעסקה -->
-            <div v-if="paymentError" class="bg-red-50 p-4 rounded-lg mt-4 text-red-700 text-center font-bold">
-              {{ paymentError }}
+            <div v-if="paymentError" class="bg-red-50 p-4 rounded-lg mt-4 text-red-700">
+              <div class="font-bold mb-2 text-center">{{ paymentError }}</div>
+              
+              <div class="text-sm mt-4">
+                <div class="font-semibold mb-1">פרטי תרומה:</div>
+                <pre class="bg-gray-100 p-2 rounded overflow-auto text-xs">{{ JSON.stringify(donationData, null, 2) }}</pre>
+              </div>
             </div>
             
             <!-- הודעת הצלחה -->
@@ -406,6 +411,9 @@ export default {
         }
       };
     }
+
+    // קביעת גובה איפריים בהתחלה
+    this.iframeHeight = 400;
   },
   methods: {
     validatePhone() {
@@ -442,6 +450,16 @@ export default {
       // טעינת האייפריים
       setTimeout(() => {
         this.iframeLoaded = true
+        
+        // מייד אחרי טעינת האייפריים, בקש את הגובה שלו
+        setTimeout(() => {
+          if (this.$refs.nedarimIframe && this.$refs.nedarimIframe.contentWindow) {
+            console.log('שולח בקשה לקבלת גובה האייפריים');
+            this.$refs.nedarimIframe.contentWindow.postMessage({
+              Name: 'GetHeight'
+            }, 'https://www.matara.pro');
+          }
+        }, 500);
       }, 1000)
     },
     executePayment() {
@@ -455,6 +473,13 @@ export default {
           this.isProcessingPayment = false;
           this.paymentError = 'לא התקבלה תשובה מהשרת. נסה שנית או פנה לתמיכה.';
           console.error('תם הזמן המוקצב לקבלת תשובה מהאייפריים');
+          
+          // נסיון חוזר לבקש את הגובה של האייפריים
+          if (this.$refs.nedarimIframe && this.$refs.nedarimIframe.contentWindow) {
+            this.$refs.nedarimIframe.contentWindow.postMessage({
+              Name: 'GetHeight'
+            }, 'https://www.matara.pro');
+          }
         }
       }, 20000); // 20 שניות טיימאאוט
       
@@ -506,14 +531,16 @@ export default {
       console.log('שולח נתונים לאייפרם:', donation);
       
       try {
-        // שליחת הנתונים לאייפרם לפי דוגמת האתר
+        // שליחת הנתונים לאייפרם לפי דוגמת האתר - בדיוק כמו בדוגמא
         const message = {
           Name: 'FinishTransaction2',
           Value: donation
         };
         
-        console.log('שולח הודעה לאייפריים:', JSON.stringify(message));
-        iframeWindow.postMessage(JSON.stringify(message), 'https://www.matara.pro');
+        console.log('שולח הודעה לאייפריים:', message);
+        
+        // שליחה באופן ישיר, כמו בדוגמא, בלי JSON.stringify
+        iframeWindow.postMessage(message, 'https://www.matara.pro');
       } catch (error) {
         console.error('שגיאה בשליחת נתונים לאייפריים:', error);
         this.isProcessingPayment = false;
@@ -532,25 +559,15 @@ export default {
       try {
         console.log('התקבלה הודעה מהאייפרם:', event.data);
         
-        // אם זה סטרינג, ננסה לפרסר אותו כ-JSON
-        let data;
-        if (typeof event.data === 'string') {
-          try {
-            data = JSON.parse(event.data);
-          } catch (e) {
-            console.error('שגיאה בפרסור JSON:', e, event.data);
-            return;
-          }
-        } else {
-          data = event.data;
-        }
+        // אם זה אובייקט ישיר
+        const data = event.data;
         
         console.log('נתוני הודעה מפורסרים:', data);
         
         // התאמת גובה האייפרם
         if (data.Name === 'Height') {
           console.log('עדכון גובה האייפרם:', data.Value);
-          this.iframeHeight = parseInt(data.Value) + 15;
+          this.iframeHeight = parseInt(data.Value) + 50; // הוספת 50 פיקסלים ליתר ביטחון
         }
         
         // הפניה לדף תשלום חיצוני (למשל PayPal)
