@@ -342,8 +342,8 @@ export default {
       iframeLoaded: false,
       iframeHeight: 600,
       nedarimConfiguration: {
-        Mosad: '7001292',         // מזהה מוסד בנדרים פלוס - צריך להחליף למספר האמיתי
-        ApiValid: 'xxxxxxx',      // טקסט אימות - צריך לקבל מהמשרד
+        Mosad: '7001292',         // מזהה מוסד בנדרים פלוס
+        ApiValid: 'LgbGNqwumA',   // מפתח אימות
         Currency: '1',            // 1 = שקל, 2 = דולר
         PaymentType: 'Ragil',     // סוג תשלום: Ragil = עסקה רגילה
       },
@@ -362,6 +362,12 @@ export default {
   mounted() {
     // הוספת מאזין להודעות מהאייפרם
     window.addEventListener('message', this.handlePostMessage);
+    
+    // הגדרת URL של צד שלישי לתשלום כשיש צורך להפנות למסך תשלום חיצוני
+    window.redirectToPayment = (url) => {
+      console.log('מפנה לדף תשלום חיצוני:', url);
+      window.open(url, '_blank');
+    };
   },
   methods: {
     validatePhone() {
@@ -374,7 +380,7 @@ export default {
       // אם זו הוראת קבע, נאפס את מספר התשלומים ל-1
       if (type === 'HK') {
         this.donationData.payments = '1'
-        if (this.donationData.hkPeriod === 0) {
+        if (this.donationData.hkPeriod === undefined) {
           this.donationData.hkPeriod = 0 // ללא הגבלה
         }
       }
@@ -404,6 +410,7 @@ export default {
       
       const iframeWindow = this.$refs.nedarimIframe.contentWindow
       
+      // הגדרת אובייקט התרומה
       const donation = {
         Mosad: this.nedarimConfiguration.Mosad,
         ApiValid: this.nedarimConfiguration.ApiValid,
@@ -414,18 +421,22 @@ export default {
         City: this.donationData.city || '',
         Phone: this.donationData.phone,
         Mail: this.donationData.email || '',
-        PaymentType: this.donationData.paymentType,
+        PaymentType: this.donationData.paymentType,   // Ragil או HK
         Amount: this.donationData.amount.toString(),
-        Tashlumim: this.donationData.payments,
-        Currency: this.nedarimConfiguration.Currency,
+        Tashlumim: this.donationData.payments,        // רלוונטי רק לתשלום רגיל
+        Currency: this.nedarimConfiguration.Currency, // 1 = שקל, 2 = דולר
         Groupe: 'קמחא דפסחא',                         // קטגוריה
         Comment: this.donationData.dedication || '',
+        HK_Months: this.donationData.paymentType === 'HK' ? 
+                 (this.donationData.hkPeriod > 0 ? this.donationData.hkPeriod.toString() : '0') : '', // משך הוראת הקבע בחודשים (0 = ללא הגבלה)
         Param1: this.donationData.paymentType === 'HK' ? 
-                (this.donationData.hkPeriod > 0 ? this.donationData.hkPeriod.toString() : 'ללא הגבלה') : '',
+                (this.donationData.hkPeriod > 0 ? this.formatHkPeriod(this.donationData.hkPeriod) : 'ללא הגבלה') : '',
         Param2: '',                                   // טקסט חופשי
         CallBack: window.location.origin + '/api/donation-callback',  // כתובת לקבלת עדכון לשרת
         CallBackMailError: ''                         // מייל לשליחת התראות שגיאה
       };
+      
+      console.log('שולח נתונים לאייפרם:', donation);
       
       // שליחת הנתונים לאייפרם באמצעות PostNedarim
       iframeWindow.postMessage(JSON.stringify({
@@ -439,19 +450,61 @@ export default {
       if (event.origin !== 'https://www.matara.pro') return;
       
       try {
-        const data = JSON.parse(event.data);
+        console.log('התקבלה הודעה מהאייפרם:', event.data);
+        
+        // אם זה סטרינג, ננסה לפרסר אותו כ-JSON
+        let data;
+        if (typeof event.data === 'string') {
+          data = JSON.parse(event.data);
+        } else {
+          data = event.data;
+        }
         
         // התאמת גובה האייפרם
         if (data.action === 'height') {
           this.iframeHeight = data.height;
         }
         
+        // הפניה לדף תשלום חיצוני (למשל PayPal)
+        if (data.action === 'RedirectTo') {
+          if (window.redirectToPayment && data.url) {
+            window.redirectToPayment(data.url);
+          }
+        }
+        
+        // עדכון סטטוס תשלום
+        if (data.action === 'PaymentUpdate') {
+          console.log('עדכון סטטוס תשלום:', data);
+          // אפשר להוסיף כאן לוגיקה לעדכון ממשק המשתמש
+        }
+        
         // קבלת תשובה מהאייפרם לאחר סיום העסקה
         if (data.action === 'TransactionResponse') {
           this.handleTransactionResponse(data.Response);
         }
+        
+        // הודעת שגיאה מהאייפרם
+        if (data.action === 'Error') {
+          console.error('שגיאה מנדרים פלוס:', data.ErrorMessage);
+          alert('אירעה שגיאה: ' + data.ErrorMessage);
+        }
+        
+        // הודעת שגיאה בוולידציה
+        if (data.action === 'ValidationError') {
+          console.error('שגיאת וולידציה:', data.Errors);
+          let errorMsg = 'נא לתקן את השגיאות הבאות:\n';
+          
+          if (Array.isArray(data.Errors)) {
+            data.Errors.forEach(err => {
+              errorMsg += `- ${err.FieldName}: ${err.ErrorMessage}\n`;
+            });
+          }
+          
+          alert(errorMsg);
+          this.showIframe = false; // חזרה לטופס
+        }
       } catch (error) {
-        console.error('שגיאה בעיבוד הודעה מהאייפרם:', error);
+        console.error('שגיאה בעיבוד הודעה מהאייפרם:', error, event.data);
       }
     },
     
@@ -459,18 +512,23 @@ export default {
       console.log('תשובה מהאייפרם:', response);
       
       // בדיקת סטטוס העסקה
-      if (response.Status === 'True') {
+      if (response && response.Status === 'True') {
         // עסקה הצליחה
         this.$router.push({
           path: '/donation-success',
           query: {
             transactionId: response.TransactionId,
-            amount: this.donationData.amount
+            amount: this.donationData.amount,
+            type: this.donationData.paymentType,
+            period: this.donationData.paymentType === 'HK' ? 
+                    (this.donationData.hkPeriod === 0 ? 'ללא הגבלה' : this.formatHkPeriod(this.donationData.hkPeriod)) : '',
+            payments: this.donationData.payments
           }
         });
       } else {
         // עסקה נכשלה
-        alert('התשלום נכשל: ' + response.ErrorMessage);
+        const errorMsg = response ? (response.ErrorMessage || 'אירעה שגיאה בתהליך התשלום') : 'התשלום נכשל ללא פרטי שגיאה';
+        alert('התשלום נכשל: ' + errorMsg);
         this.showIframe = false;
       }
     },

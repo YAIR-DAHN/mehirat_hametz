@@ -13,12 +13,34 @@
           
           <!-- פרטי התשלום -->
           <div v-if="transactionId" class="bg-primary-50 p-6 rounded-xl mb-8 border border-primary-100">
-            <p class="text-lg text-gray-700 mb-3">
-              <strong>מספר אסמכתא:</strong> <span class="font-medium">{{ transactionId }}</span>
-            </p>
-            <p class="text-lg text-gray-700">
-              <strong>סכום תרומה:</strong> <span class="font-medium">₪{{ amount }}</span>
-            </p>
+            <h2 class="text-xl font-bold text-primary-700 mb-4">פרטי התרומה:</h2>
+            <div class="space-y-2 text-right">
+              <p class="text-lg text-gray-700">
+                <strong>מספר אסמכתא:</strong> <span class="font-medium">{{ transactionId }}</span>
+              </p>
+              <p class="text-lg text-gray-700">
+                <strong>סכום תרומה:</strong> <span class="font-medium">₪{{ formatNumber(amount) }}</span>
+              </p>
+              <template v-if="paymentType === 'Ragil'">
+                <p v-if="payments > 1" class="text-lg text-gray-700">
+                  <strong>מספר תשלומים:</strong> <span class="font-medium">{{ payments }}</span>
+                </p>
+                <p v-if="payments > 1" class="text-lg text-gray-700">
+                  <strong>סכום לתשלום:</strong> <span class="font-medium">₪{{ formatNumber(Math.round(amount / payments)) }} × {{ payments }}</span>
+                </p>
+              </template>
+              <template v-else-if="paymentType === 'HK'">
+                <p class="text-lg text-gray-700">
+                  <strong>סוג תשלום:</strong> <span class="font-medium">הוראת קבע חודשית</span>
+                </p>
+                <p class="text-lg text-gray-700">
+                  <strong>משך הוראת הקבע:</strong> <span class="font-medium">{{ period || 'ללא הגבלה' }}</span>
+                </p>
+                <p class="text-lg text-gray-700">
+                  <strong>סכום חודשי:</strong> <span class="font-medium">₪{{ formatNumber(amount) }}</span>
+                </p>
+              </template>
+            </div>
           </div>
           
           <p class="text-lg text-gray-600 mb-8">
@@ -74,13 +96,24 @@ export default {
   data() {
     return {
       transactionId: '',
-      amount: 0
+      amount: 0,
+      paymentType: 'Ragil',
+      period: '',
+      payments: 1
     }
   },
   mounted() {
     // קבלת פרמטרים מה-URL
     this.transactionId = this.$route.query.transactionId || '';
     this.amount = this.$route.query.amount || 0;
+    this.paymentType = this.$route.query.type || 'Ragil';
+    this.period = this.$route.query.period || '';
+    this.payments = this.$route.query.payments || 1;
+  },
+  methods: {
+    formatNumber(number) {
+      return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
   }
 }
 </script>
