@@ -375,7 +375,8 @@ export default {
       currentDisplayAmount: 0,
       paymentError: null,
       isProcessingPayment: false,
-      paymentSuccess: false
+      paymentSuccess: false,
+      paymentTimeout: null
     }
   },
   computed: {
@@ -448,14 +449,35 @@ export default {
       this.paymentError = null
       this.isProcessingPayment = true
       
-      setTimeout(() => {
-        this.postDataToIframe()
-      }, 500)
+      // הגדרת טיימאאוט למקרה שלא מתקבלת תשובה מהאייפריים
+      this.paymentTimeout = setTimeout(() => {
+        if (this.isProcessingPayment) {
+          this.isProcessingPayment = false;
+          this.paymentError = 'לא התקבלה תשובה מהשרת. נסה שנית או פנה לתמיכה.';
+          console.error('תם הזמן המוקצב לקבלת תשובה מהאייפריים');
+        }
+      }, 20000); // 20 שניות טיימאאוט
+      
+      // שליחת הנתונים לאייפריים
+      this.postDataToIframe();
     },
     postDataToIframe() {
-      if (!this.$refs.nedarimIframe) return
+      if (!this.$refs.nedarimIframe) {
+        console.error('האייפריים לא נמצא');
+        this.isProcessingPayment = false;
+        clearTimeout(this.paymentTimeout);
+        this.paymentError = 'אירעה שגיאה בתהליך התשלום. נסה שנית.';
+        return;
+      }
       
-      const iframeWindow = this.$refs.nedarimIframe.contentWindow
+      const iframeWindow = this.$refs.nedarimIframe.contentWindow;
+      if (!iframeWindow) {
+        console.error('לא ניתן לגשת לחלון האייפריים');
+        this.isProcessingPayment = false;
+        clearTimeout(this.paymentTimeout);
+        this.paymentError = 'אירעה שגיאה בתהליך התשלום. נסה שנית.';
+        return;
+      }
       
       // הגדרת אובייקט התרומה
       const donation = {
@@ -477,22 +499,35 @@ export default {
         Param1: this.donationData.paymentType === 'HK' ? 
                 (this.donationData.hkPeriod > 0 ? this.formatHkPeriod(this.donationData.hkPeriod) : 'ללא הגבלה') : '',
         Param2: '',                                   // טקסט חופשי
-        CallBack: window.location.origin + '/api/donation-callback',  // כתובת לקבלת עדכון לשרת
+        CallBack: '',                                 // השארת שדה ריק - אין צורך בקאלבק 
         CallBackMailError: ''                         // מייל לשליחת התראות שגיאה
       };
       
       console.log('שולח נתונים לאייפרם:', donation);
       
-      // שליחת הנתונים לאייפרם באמצעות PostNedarim
-      iframeWindow.postMessage(JSON.stringify({
-        Name: 'FinishTransaction2',
-        Value: donation
-      }), 'https://www.matara.pro');
+      try {
+        // שליחת הנתונים לאייפרם לפי דוגמת האתר
+        const message = {
+          Name: 'FinishTransaction2',
+          Value: donation
+        };
+        
+        console.log('שולח הודעה לאייפריים:', JSON.stringify(message));
+        iframeWindow.postMessage(JSON.stringify(message), 'https://www.matara.pro');
+      } catch (error) {
+        console.error('שגיאה בשליחת נתונים לאייפריים:', error);
+        this.isProcessingPayment = false;
+        clearTimeout(this.paymentTimeout);
+        this.paymentError = 'אירעה שגיאה בתהליך התשלום: ' + error.message;
+      }
     },
     
     handlePostMessage(event) {
       // וידוא שההודעה מגיעה מהדומיין של נדרים פלוס
-      if (event.origin !== 'https://www.matara.pro') return;
+      if (event.origin !== 'https://www.matara.pro') {
+        console.log('התקבלה הודעה מדומיין לא מורשה:', event.origin);
+        return;
+      }
       
       try {
         console.log('התקבלה הודעה מהאייפרם:', event.data);
@@ -500,10 +535,17 @@ export default {
         // אם זה סטרינג, ננסה לפרסר אותו כ-JSON
         let data;
         if (typeof event.data === 'string') {
-          data = JSON.parse(event.data);
+          try {
+            data = JSON.parse(event.data);
+          } catch (e) {
+            console.error('שגיאה בפרסור JSON:', e, event.data);
+            return;
+          }
         } else {
           data = event.data;
         }
+        
+        console.log('נתוני הודעה מפורסרים:', data);
         
         // התאמת גובה האייפרם
         if (data.Name === 'Height') {
@@ -512,36 +554,59 @@ export default {
         }
         
         // הפניה לדף תשלום חיצוני (למשל PayPal)
-        if (data.action === 'RedirectTo' || data.Name === 'RedirectTo') {
-          const url = data.url || data.Value;
+        if (data.Name === 'RedirectTo' || data.action === 'RedirectTo') {
+          const url = data.Value || data.url;
           if (window.redirectToPayment && url) {
+            console.log('מפנה לדף תשלום חיצוני:', url);
             window.redirectToPayment(url);
           }
         }
         
         // עדכון סטטוס תשלום
-        if (data.action === 'PaymentUpdate' || data.Name === 'PaymentUpdate') {
+        if (data.Name === 'PaymentUpdate' || data.action === 'PaymentUpdate') {
           console.log('עדכון סטטוס תשלום:', data);
           // אפשר להוסיף כאן לוגיקה לעדכון ממשק המשתמש
         }
         
         // קבלת תשובה מהאייפרם לאחר סיום העסקה
-        if (data.action === 'TransactionResponse' || data.Name === 'TransactionResponse') {
-          const response = data.Response || data.Value;
+        if (data.Name === 'TransactionResponse' || data.action === 'TransactionResponse') {
+          const response = data.Value || data.Response;
+          console.log('התקבלה תשובת עסקה:', response);
+          
+          // ביטול הטיימאאוט כי קיבלנו תשובה
+          if (this.paymentTimeout) {
+            clearTimeout(this.paymentTimeout);
+          }
+          
           this.handleTransactionResponse(response);
         }
         
         // הודעת שגיאה מהאייפרם
-        if (data.action === 'Error' || data.Name === 'Error') {
-          const errorMsg = data.ErrorMessage || data.Value;
+        if (data.Name === 'Error' || data.action === 'Error') {
+          const errorMsg = data.Value || data.ErrorMessage;
           console.error('שגיאה מנדרים פלוס:', errorMsg);
-          alert('אירעה שגיאה: ' + errorMsg);
+          
+          // ביטול הטיימאאוט כי קיבלנו תשובה
+          if (this.paymentTimeout) {
+            clearTimeout(this.paymentTimeout);
+          }
+          
+          this.isProcessingPayment = false;
+          this.paymentError = 'אירעה שגיאה: ' + errorMsg;
         }
         
         // הודעת שגיאה בוולידציה
-        if (data.action === 'ValidationError' || data.Name === 'ValidationError') {
-          const errors = data.Errors || data.Value;
+        if (data.Name === 'ValidationError' || data.action === 'ValidationError') {
+          const errors = data.Value || data.Errors;
           console.error('שגיאת וולידציה:', errors);
+          
+          // ביטול הטיימאאוט כי קיבלנו תשובה
+          if (this.paymentTimeout) {
+            clearTimeout(this.paymentTimeout);
+          }
+          
+          this.isProcessingPayment = false;
+          
           let errorMsg = 'נא לתקן את השגיאות הבאות:\n';
           
           if (Array.isArray(errors)) {
@@ -550,22 +615,29 @@ export default {
             });
           }
           
-          alert(errorMsg);
-          this.showIframe = false; // חזרה לטופס
+          this.paymentError = errorMsg;
+          setTimeout(() => {
+            this.showIframe = false; // חזרה לטופס
+          }, 3000);
         }
       } catch (error) {
         console.error('שגיאה בעיבוד הודעה מהאייפרם:', error, event.data);
+        this.isProcessingPayment = false;
+        if (this.paymentTimeout) {
+          clearTimeout(this.paymentTimeout);
+        }
+        this.paymentError = 'אירעה שגיאה בעיבוד התשובה מהשרת';
       }
     },
     
     handleTransactionResponse(response) {
-      console.log('תשובה מהאייפרם:', response);
-      this.isProcessingPayment = false
+      console.log('מעבד תשובה מהאייפרם:', response);
+      this.isProcessingPayment = false;
       
       // בדיקת סטטוס העסקה
       if (response && response.Status === 'True') {
         // עסקה הצליחה
-        this.paymentSuccess = true
+        this.paymentSuccess = true;
         
         // מעבר לדף אישור לאחר השהייה קצרה
         setTimeout(() => {
@@ -580,10 +652,15 @@ export default {
               payments: this.donationData.payments
             }
           });
-        }, 2000)
+        }, 2000);
+      } else if (response && response.Status === 'Error') {
+        // עסקה נכשלה עם שגיאה מוגדרת
+        this.paymentError = 'התשלום נכשל: ' + (response.Message || response.ErrorMessage || 'אירעה שגיאה בתהליך התשלום');
       } else {
-        // עסקה נכשלה
-        const errorMsg = response ? (response.ErrorMessage || 'אירעה שגיאה בתהליך התשלום') : 'התשלום נכשל ללא פרטי שגיאה';
+        // עסקה נכשלה ללא פרטים או שגיאה כללית
+        const errorMsg = response ? 
+                         (response.Message || response.ErrorMessage || 'אירעה שגיאה בתהליך התשלום') : 
+                         'התשלום נכשל ללא פרטי שגיאה';
         this.paymentError = 'התשלום נכשל: ' + errorMsg;
       }
     },
