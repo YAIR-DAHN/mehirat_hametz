@@ -86,7 +86,17 @@
               </div>
               <div>
                 <label class="form-label">דוא"ל</label>
-                <input type="email" v-model="donationData.email" class="form-input">
+                <input 
+                  type="email" 
+                  v-model="donationData.email" 
+                  class="form-input"
+                  @input="validateEmail"
+                  :class="{'border-red-500': emailError}"
+                >
+                <div class="text-sm text-gray-500 mt-1 mr-2">
+                  <span>קבלה תישלח לדואר האלקטרוני</span>
+                  <span v-if="emailError" class="text-red-500 block">* כתובת מייל לא תקינה</span>
+                </div>
               </div>
               <div>
                 <label class="form-label">עיר</label>
@@ -269,7 +279,7 @@
               id="nedarimIframe"
               src="https://www.matara.pro/nedarimplus/iframe/"
               width="100%" 
-              :style="{ height: iframeHeight + 'px' }"
+              style="height: 350px;"
               frameborder="0"
               allow="payment"
             ></iframe>
@@ -312,8 +322,21 @@
             <div v-if="paymentSuccess" class="bg-green-50 p-6 rounded-lg mt-6 text-center">
               <div class="text-5xl mb-4 text-green-500">✅</div>
               <h3 class="text-2xl font-bold text-green-700 mb-2">התשלום התקבל בהצלחה!</h3>
-              <p class="text-gray-600 mb-4">תודה על תרומתך לקמחא דפסחא.</p>
-              <p class="text-gray-600">מעבר לדף האישור...</p>
+              <p class="text-gray-600 mb-4">תודה על תרומתך לקמחא דפסחא, קבלה נשלחה לדואר האלקטרוני.</p>
+              
+              <!-- כפתורי שיתוף -->
+              <div class="py-4">
+                <ShareButtons 
+                  title="תרמתי כעת לקמחא דפסחא" 
+                  text="הצטרפו אלי לתרומה לקמחא דפסחא לפסח - כולל שערי ניסים"
+                />
+              </div>
+              
+              <div class="mt-4">
+                <router-link to="/" class="text-primary-600 hover:text-primary-700 font-bold">
+                  חזרה לדף הבית
+                </router-link>
+              </div>
             </div>
           </div>
         </div>
@@ -367,7 +390,6 @@ export default {
       },
       showIframe: false,
       iframeLoaded: false,
-      iframeHeight: 600,
       nedarimConfiguration: {
         Mosad: '7001292',         // מזהה מוסד בנדרים פלוס
         ApiValid: 'LgbGNqwumA',   // מפתח אימות
@@ -381,7 +403,8 @@ export default {
       paymentError: null,
       isProcessingPayment: false,
       paymentSuccess: false,
-      paymentTimeout: null
+      paymentTimeout: null,
+      emailError: false
     }
   },
   computed: {
@@ -399,26 +422,19 @@ export default {
       console.log('מפנה לדף תשלום חיצוני:', url);
       window.open(url, '_blank');
     };
-    
-    // אתחול האייפרם בדף
-    if (this.$refs.nedarimIframe) {
-      this.$refs.nedarimIframe.onload = () => {
-        console.log('האייפרם נטען, מבקש גובה');
-        if (this.$refs.nedarimIframe && this.$refs.nedarimIframe.contentWindow) {
-          this.$refs.nedarimIframe.contentWindow.postMessage({
-            Name: 'GetHeight'
-          }, 'https://www.matara.pro');
-        }
-      };
-    }
-
-    // קביעת גובה איפריים בהתחלה
-    this.iframeHeight = 400;
   },
   methods: {
     validatePhone() {
       const phoneRegex = /^0[0-9]{8,9}$/
       this.phoneError = !phoneRegex.test(this.donationData.phone)
+    },
+    validateEmail() {
+      if (!this.donationData.email) {
+        this.emailError = false;
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      this.emailError = !emailRegex.test(this.donationData.email)
     },
     setPaymentType(type) {
       this.donationData.paymentType = type
@@ -435,32 +451,31 @@ export default {
       this.donationData.hkPeriod = period
     },
     startDonation() {
-      // בדיקת תקינות מספר טלפון לפני שליחה
-      this.validatePhone()
-      if (this.phoneError) {
-        alert('אנא הזן מספר טלפון תקין')
-        return
+      // בדיקת תקינות מספר טלפון ומייל לפני שליחה
+      this.validatePhone();
+      if (this.donationData.email) {
+        this.validateEmail();
       }
       
-      this.showIframe = true
-      this.paymentError = null
-      this.isProcessingPayment = false
-      this.paymentSuccess = false
+      if (this.phoneError) {
+        alert('אנא הזן מספר טלפון תקין');
+        return;
+      }
+      
+      if (this.emailError) {
+        alert('אנא הזן כתובת מייל תקינה');
+        return;
+      }
+      
+      this.showIframe = true;
+      this.paymentError = null;
+      this.isProcessingPayment = false;
+      this.paymentSuccess = false;
       
       // טעינת האייפריים
       setTimeout(() => {
-        this.iframeLoaded = true
-        
-        // מייד אחרי טעינת האייפריים, בקש את הגובה שלו
-        setTimeout(() => {
-          if (this.$refs.nedarimIframe && this.$refs.nedarimIframe.contentWindow) {
-            console.log('שולח בקשה לקבלת גובה האייפריים');
-            this.$refs.nedarimIframe.contentWindow.postMessage({
-              Name: 'GetHeight'
-            }, 'https://www.matara.pro');
-          }
-        }, 500);
-      }, 1000)
+        this.iframeLoaded = true;
+      }, 1000);
     },
     executePayment() {
       // ביצוע התשלום כאשר לוחצים על כפתור התשלום
@@ -473,13 +488,6 @@ export default {
           this.isProcessingPayment = false;
           this.paymentError = 'לא התקבלה תשובה מהשרת. נסה שנית או פנה לתמיכה.';
           console.error('תם הזמן המוקצב לקבלת תשובה מהאייפריים');
-          
-          // נסיון חוזר לבקש את הגובה של האייפריים
-          if (this.$refs.nedarimIframe && this.$refs.nedarimIframe.contentWindow) {
-            this.$refs.nedarimIframe.contentWindow.postMessage({
-              Name: 'GetHeight'
-            }, 'https://www.matara.pro');
-          }
         }
       }, 20000); // 20 שניות טיימאאוט
       
@@ -564,12 +572,6 @@ export default {
         
         console.log('נתוני הודעה מפורסרים:', data);
         
-        // התאמת גובה האייפרם
-        if (data.Name === 'Height') {
-          console.log('עדכון גובה האייפרם:', data.Value);
-          this.iframeHeight = parseInt(data.Value) + 50; // הוספת 50 פיקסלים ליתר ביטחון
-        }
-        
         // הפניה לדף תשלום חיצוני (למשל PayPal)
         if (data.Name === 'RedirectTo' || data.action === 'RedirectTo') {
           const url = data.Value || data.url;
@@ -651,8 +653,8 @@ export default {
       console.log('מעבד תשובה מהאייפרם:', response);
       this.isProcessingPayment = false;
       
-      // בדיקת סטטוס העסקה
-      if (response && response.Status === 'True') {
+      // בדיקת סטטוס העסקה - בתצוגת המשתמש, תמיד להציג הצלחה כשסטטוס הוא OK
+      if (response && (response.Status === 'True' || response.Status === 'OK')) {
         // עסקה הצליחה
         this.paymentSuccess = true;
         
@@ -661,7 +663,7 @@ export default {
           this.$router.push({
             path: '/donation-success',
             query: {
-              transactionId: response.TransactionId,
+              transactionId: response.TransactionId || response.Confirmation || 'unknown',
               amount: this.donationData.amount,
               type: this.donationData.paymentType,
               period: this.donationData.paymentType === 'HK' ? 

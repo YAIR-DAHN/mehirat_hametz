@@ -5,53 +5,46 @@
     <div class="container-custom">
       <div class="max-w-2xl mx-auto text-center">
         <div class="card bg-white p-10 rounded-2xl shadow-lg">
-          <div class="text-6xl mb-6 text-green-500 animate-bounce">✅</div>
-          <h1 class="text-4xl font-bold text-primary-700 mb-4 text-shadow">התרומה התקבלה בהצלחה!</h1>
-          <p class="text-xl text-gray-600 mb-8">
-            תודה על תרומתך לקמחא דפסחא. בזכותך, משפחות נזקקות יוכלו לחגוג את חג הפסח בכבוד ובשמחה.
-          </p>
-          
-          <!-- פרטי התשלום -->
-          <div v-if="transactionId" class="bg-primary-50 p-6 rounded-xl mb-8 border border-primary-100">
-            <h2 class="text-xl font-bold text-primary-700 mb-4">פרטי התרומה:</h2>
-            <div class="space-y-2 text-right">
-              <p class="text-lg text-gray-700">
-                <strong>מספר אסמכתא:</strong> <span class="font-medium">{{ transactionId }}</span>
-              </p>
-              <p class="text-lg text-gray-700">
-                <strong>סכום תרומה:</strong> <span class="font-medium">₪{{ formatNumber(amount) }}</span>
-              </p>
-              <template v-if="paymentType === 'Ragil'">
-                <p v-if="payments > 1" class="text-lg text-gray-700">
-                  <strong>מספר תשלומים:</strong> <span class="font-medium">{{ payments }}</span>
-                </p>
-                <p v-if="payments > 1" class="text-lg text-gray-700">
-                  <strong>סכום לתשלום:</strong> <span class="font-medium">₪{{ formatNumber(Math.round(amount / payments)) }} × {{ payments }}</span>
-                </p>
-              </template>
-              <template v-else-if="paymentType === 'HK'">
-                <p class="text-lg text-gray-700">
-                  <strong>סוג תשלום:</strong> <span class="font-medium">הוראת קבע חודשית</span>
-                </p>
-                <p class="text-lg text-gray-700">
-                  <strong>משך הוראת הקבע:</strong> <span class="font-medium">{{ period || 'ללא הגבלה' }}</span>
-                </p>
-                <p class="text-lg text-gray-700">
-                  <strong>סכום חודשי:</strong> <span class="font-medium">₪{{ formatNumber(amount) }}</span>
-                </p>
-              </template>
+          <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-green-700 mb-4 animation-slide-up">
+              התרומה התקבלה בהצלחה!
+            </h1>
+            <div class="text-lg text-gray-600 animation-slide-up animation-delay-200">
+              <p class="mb-2">תודה על תרומתך הנדיבה לקמחא דפסחא.</p>
+              <p>קבלה נשלחה לדואר האלקטרוני שלך.</p>
             </div>
           </div>
-          
-          <p class="text-lg text-gray-600 mb-8">
-            אישור על התרומה נשלח לכתובת הדוא"ל שלך.
-          </p>
-          
-          <!-- שיתוף ההודעה -->
-          <div class="mb-8">
+
+          <!-- פרטי התרומה -->
+          <div class="bg-white rounded-lg shadow-lg p-6 mb-8 animation-slide-up animation-delay-400">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">פרטי התרומה</h2>
+            <div class="space-y-4">
+              <div class="flex justify-between">
+                <span class="text-gray-600">מספר עסקה:</span>
+                <span class="font-medium">{{ $route.query.transactionId }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">סכום:</span>
+                <span class="font-medium">₪{{ formattedAmount }}</span>
+              </div>
+              <div v-if="$route.query.type === 'Ragil' && $route.query.payments > 1" class="flex justify-between">
+                <span class="text-gray-600">תשלומים:</span>
+                <span class="font-medium">{{ $route.query.payments }}</span>
+              </div>
+              <div v-if="$route.query.type === 'HK'" class="flex justify-between">
+                <span class="text-gray-600">משך הוראת הקבע:</span>
+                <span class="font-medium">{{ $route.query.period }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- כפתורי שיתוף -->
+          <div class="bg-white rounded-lg shadow-lg p-6 mb-8 animation-slide-up animation-delay-600">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">שתפו את המצווה</h2>
+            <p class="text-gray-600 mb-6">שתפו את הזכות עם חברים ומשפחה ותסייעו למשפחות נזקקות</p>
             <ShareButtons 
-              title="שתפו את עמוד תרומת קמחא דפסחא" 
-              text="תרמתי כעת לקמחא דפסחא של כולל שערי ניסים. הצטרפו גם אתם ועזרו למשפחות נזקקות!"
+              title="תרמתי כעת לקמחא דפסחא" 
+              text="הצטרפו אלי לתרומה לקמחא דפסחא לפסח - כולל שערי ניסים"
               size="large"
             />
           </div>
@@ -91,28 +84,17 @@ export default {
   name: 'DonationSuccessView',
   components: {
     LogoHeader,
-    ShareButtons
+    ShareButtons,
   },
   data() {
     return {
-      transactionId: '',
-      amount: 0,
-      paymentType: 'Ragil',
-      period: '',
-      payments: 1
+      // הנתונים יגיעו מה-query parameters
     }
   },
-  mounted() {
-    // קבלת פרמטרים מה-URL
-    this.transactionId = this.$route.query.transactionId || '';
-    this.amount = this.$route.query.amount || 0;
-    this.paymentType = this.$route.query.type || 'Ragil';
-    this.period = this.$route.query.period || '';
-    this.payments = this.$route.query.payments || 1;
-  },
-  methods: {
-    formatNumber(number) {
-      return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  computed: {
+    formattedAmount() {
+      const amount = parseFloat(this.$route.query.amount) || 0;
+      return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
   }
 }
