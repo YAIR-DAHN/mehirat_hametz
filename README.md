@@ -50,8 +50,8 @@
 
 ```bash
 # שיבוט המאגר
-git clone https://github.com/your-username/hametz.git
-cd hametz
+git clone https://github.com/YAIR-DAHN/mehirat_hametz.git
+cd mehirat_hametz
 
 # התקנת תלויות
 npm install
@@ -91,4 +91,4 @@ npm run build
 
 ## 📄 רישיון
 
-כל הזכויות שמורות © 2025 כולל שערי ניסים - פיתוח ע"י Y.D. Systems 
+כל הזכויות שמורות © 2025 ל Y.D. Systems 
