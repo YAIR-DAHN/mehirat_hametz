@@ -107,16 +107,6 @@
                 <input type="text" v-model="donationData.street" class="form-input">
               </div>
               <div>
-                <label class="form-label">סכום תרומה <span class="text-red-500">*</span></label>
-                <!-- תצוגת הסכום הנבחר -->
-                <div class="text-center mb-6 overflow-hidden">
-                  <div class="text-5xl font-bold text-primary-700 mb-2">
-                    ₪{{ formattedAmount }}
-                  </div>
-                  <div class="text-gray-500" v-if="donationData.payments > 1 && donationData.paymentType === 'Ragil'">
-                    {{ donationData.payments }} תשלומים של ₪{{ (donationData.amount / donationData.payments).toFixed(0) }}
-                  </div>
-                </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                   <button 
@@ -148,6 +138,16 @@
                   >
                     ₪{{ amount }}
                   </button>
+                </div>
+                  <label class="form-label">סכום תרומה <span class="text-red-500">*</span></label>
+                <!-- תצוגת הסכום הנבחר -->
+                <div class="text-center mb-6 overflow-hidden">
+                  <div class="text-5xl font-bold text-primary-700 mb-2">
+                    ₪{{ formattedAmount }}
+                  </div>
+                  <div class="text-gray-500" v-if="donationData.payments > 1 && donationData.paymentType === 'Ragil'">
+                    {{ donationData.payments }} תשלומים של ₪{{ (donationData.amount / donationData.payments).toFixed(0) }}
+                  </div>
                 </div>
                 <div class="mt-4">
                   <label class="form-label">סכום אחר</label>
@@ -382,7 +382,7 @@ export default {
         email: '',
         city: '',
         street: '',
-        amount: 180,
+        amount: 600,
         payments: '1',
         dedication: '',
         paymentType: 'Ragil', // Ragil = חד פעמי, HK = הוראת קבע
