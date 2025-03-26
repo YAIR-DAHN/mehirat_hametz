@@ -171,7 +171,7 @@
                     :class="donationData.paymentType === 'Ragil' ? 'bg-primary-100 border-primary-500 font-bold shadow-lg' : 'border-gray-300 hover:border-primary-400'"
                     @click="setPaymentType('Ragil')"
                   >
-                    תשלום חד פעמי
+                    תרומה חד פעמית
                   </button>
                   <div>
                     <button 
