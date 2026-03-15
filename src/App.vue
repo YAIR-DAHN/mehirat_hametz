@@ -15,37 +15,32 @@ export default {
   <div class="min-h-screen flex flex-col">
     <Navbar />
     <main class="flex-grow">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <transition name="page" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </main>
     <AppFooter />
   </div>
 </template>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;500;600;700;800;900&display=swap');
 
-html {
-  direction: rtl;
-  font-family: 'Heebo', system-ui, sans-serif;
+/* Page transitions */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-.container-custom {
-  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
-.card {
-  @apply bg-white p-6 rounded-lg shadow-sm;
-}
-
-.btn-primary {
-  @apply bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200;
-}
-
-.form-label {
-  @apply block text-gray-700 text-lg mb-2;
-}
-
-.form-input {
-  @apply w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500;
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>
