@@ -82,7 +82,7 @@
         <!-- אזהרה -->
         <div class="bg-yellow-50 border-r-4 border-yellow-400 p-6 mb-8 rounded-lg shadow-md transform hover:shadow-lg transition-all duration-300">
           <p class="text-yellow-700 text-lg">
-            <strong class="text-yellow-800">חשוב לדעת:</strong> יש למלא את הטופס לא יאוחר מיום חמישי יא' ניסן תשפ"ה.
+            <strong class="text-yellow-800">חשוב לדעת:</strong> יש למלא את הטופס לא יאוחר מיום שלישי יג' ניסן תשפ"ו.
           </p>
         </div>
 
@@ -136,7 +136,7 @@
                 <div>
                   <h3 class="text-xl font-bold text-primary-700 mb-2">מועד אחרון למכירה</h3>
                   <p class="text-gray-600 leading-relaxed">
-                    יש למלא את הטופס לא יאוחר מיום חמישי יא' ניסן תשפ"ה
+                    יש למלא את הטופס לא יאוחר מיום שלישי יג' ניסן תשפ"ו
                   </p>
                 </div>
 
