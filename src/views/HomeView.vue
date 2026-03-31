@@ -18,10 +18,15 @@
               מכירת חמץ מקוונת, פשוטה ומהירה לפני חג הפסח. המתקיימת על ידי כולל שערי ניסים בנשיאות הרב יוסף שמעון פרטוש
               שליט"א
             </p>
+                                        <H3>שימו לב המכירת חמץ דרך בית הכנסת הסתיימה, <br>  מצורף קישור למכירת חמץ דרך הרבנות הראשית <br> </H3>
+
             <div class="flex flex-col md:flex-row gap-4 justify-center items-center animate-slide-up delay-200">
-              <router-link to="/form" class="btn-primary text-lg py-3.5 px-10 w-full md:w-auto">
+                       <a href="https://govforms.gov.il/mw/forms/ChametzSale%40rrl.gov.il?gbxid=1" target="_blank"
+              class="btn-primary text-xl py-3 px-8 w-full md:w-auto transform hover:scale-105 transition-transform duration-300">
+              למילוי טופס מכירת חמץ (רבנות) </a> 
+            <!--   <router-link to="/form" class="btn-primary text-lg py-3.5 px-10 w-full md:w-auto">
                 🌾 למילוי טופס המכירה
-              </router-link>
+              </router-link> -->
               <router-link to="/kimcha" class="btn-accent text-lg py-3.5 px-10 w-full md:w-auto">
                 💝 תרומה לקמחא דפסחא
               </router-link>
